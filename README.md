@@ -10,11 +10,11 @@ Create a folder "bulkimport" into the **/core/cat/static** one.
 # Usage
 
 **IMPORT URLS**
-Ask the cat """bulkimport url **LIST OF URLS COMMA SEPARATED**"
+Ask the cat "bulkimport url **LIST OF URLS COMMA SEPARATED**"
 Example: bulkimport url https://cheshirecat.ai/code-of-ethics/,https://cheshirecat.ai/
 
 **IMPORT DOCUMENTS**
-Put a **COPY** (after import files wil be deleted, so put a copy not the original one) of files you want to import into **/core/cat/static/bulkimport** folder and then ask the cat """bulkimport docs"
+Put a **COPY** (after import files wil be deleted, so put a copy not the original one) of files you want to import into **/core/cat/static/bulkimport** folder and then ask the cat "bulkimport docs"
 
 # Output
 

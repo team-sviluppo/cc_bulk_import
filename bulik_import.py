@@ -25,6 +25,7 @@ def bulk_url_import(url_list: str, cat):
     message = message + "</tbody></table>"
     return message
 
+
 @tool(return_direct=True)
 def bulk_docs_import(tool_input,cat):
     """Replies to "bulkimport docs". Input is always none"""

@@ -18,6 +18,6 @@ Put a **COPY** (after import files wil be deleted, so put a copy not the origina
 
 # Output
 
-The cat will give a feedback after the import process is completed, so if you have multiple urls on multiple documenta you need to wait for having a response from the cat.
+The cat will give a feedback after the import process is completed, so if you have multiple urls on multiple document you need to wait for having a response from the cat.
 
 The cat responde with a table containing the status (OK or KO) for any single url/document setn to the rabbit hole.

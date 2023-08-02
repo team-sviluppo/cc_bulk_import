@@ -3,8 +3,8 @@
   "description": "Plugin che permette di importare massivamente nel rabbithole URL e Documenti",
   "author_name": "Team Sviluppo",
   "author_url": "https://www.teamsviluppo.it/",
-  "plugin_url": "https://github.com/cheshire-cat-ai/core",
-  "tags": "tools",
+  "plugin_url": "https://github.com/team-sviluppo/cc_bulk_import",
+  "tags": "plugins",
   "thumb": "",
   "version": "1.0.0"
 }

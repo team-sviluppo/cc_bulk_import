@@ -1,6 +1,6 @@
 {
   "name": "Cheshire Cat Bulk Import",
-  "description": "Plugin che permette di importare massivamente nel rabbithole URL e Documenti",
+  "description": "Plugin that allows you to massively import URLs and Documents into the rabbithole",
   "author_name": "Team Sviluppo",
   "author_url": "https://www.teamsviluppo.it/",
   "plugin_url": "https://github.com/team-sviluppo/cc_bulk_import",

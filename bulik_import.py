@@ -4,6 +4,7 @@ from typing import Dict
 from cat.mad_hatter.decorators import tool, hook
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
+import threading
 
 
 @hook(priority=10)
@@ -40,7 +41,11 @@ def bulk_url_import(url_list: str, cat):
             try:
                 parsed_link = requests.get(link).url
                 log("Send " + parsed_link + " to rabbithole", "WARNING")
-                cat.rabbit_hole.ingest_file(cat, parsed_link, 400, 100)
+                #cat.rabbit_hole.ingest_file(cat, parsed_link, 400, 100)
+                t = threading.Thread(target=cat.rabbit_hole.ingest_file, args=(cat, parsed_link, 400, 100))
+                
+                # Start the thread
+                t.start()
                 log(parsed_link + " sent to rabbithole!", "WARNING")
                 message = message + "<tr><td>" + link + "</td><td>&#x2705;</td></tr>"
             except requests.exceptions.RequestException as err:
@@ -65,7 +70,11 @@ def bulk_docs_import(cat):
         try:
             log("Send " + file + " to rabbithole", "WARNING")
             filepath = "/app/cat/static/bulkimport/" + file
-            cat.rabbit_hole.ingest_file(cat, filepath, 400, 100)
+            #cat.rabbit_hole.ingest_file(cat, filepath, 400, 100)
+            t = threading.Thread(target=cat.rabbit_hole.ingest_file, args=(cat, filepath, 400, 100))
+            
+            # Start the thread
+            t.start()
             log(file + " sent to rabbithole!", "WARNING")
             message = message + "<tr><td>" + file + "</td><td>&#x2705;</td></tr>"
             os.remove(filepath)

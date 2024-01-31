@@ -1,11 +1,31 @@
 import os
 import requests
 from typing import Dict
-from cat.mad_hatter.decorators import tool, hook
+from cat.mad_hatter.decorators import tool, hook, plugin
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 from threading import Thread
 from multiprocessing import cpu_count
+from enum import Enum
+from pydantic import BaseModel
+
+class BatchSize(Enum):
+    auto: str = "Auto"
+    one: int = 1
+    two: int = 2
+    three: int = 3
+    four: int = 4
+    
+
+class BulkImportSettings(BaseModel):
+    # Select
+    files_to_ingest_simultaneously: BatchSize = BatchSize.one
+
+# Give your settings model to the Cat.
+@plugin
+def settings_model():
+    return BulkImportSettings
+
 
 @hook(priority=10)
 def agent_fast_reply(fast_reply, cat) -> Dict:
@@ -66,17 +86,28 @@ def bulk_url_import(url_list: str, cat):
     return message
 
 def bulk_docs_import(cat):
+
+    # Load the settings
+    settings = cat.mad_hatter.get_plugin().load_settings()
+    get_batch_size = settings.get("files_to_ingest_simultaneously")
+
+    # Set default values if not provided
+    if get_batch_size == "Auto":
+        batch_size = max(1, cpu_count() // 2)
+    elif get_batch_size is None:
+        get_batch_size = 1
+    else:
+        batch_size = int(get_batch_size)
+
     message = '<table><thead><tr><th class="text-neutral">Document</th><th class="text-neutral">Status</th></tr></thead><tbody>'
     files = os.listdir("/app/cat/static/bulkimport")
 
-    # Set batch_size to half the number of processor cores
-    batch_size = max(1, cpu_count() // 2)
-
-    batch_size = 1
 
     for i in range(0, len(files), batch_size):
         current_batch = files[i:i+batch_size]
         ingestion_threads = []
+
+        cat.send_ws_message(content=f"Ingesting {batch_size} more files simultaneously ...", msg_type='chat')
 
         for idx, file in enumerate(current_batch, 1):
             if file.startswith("."):

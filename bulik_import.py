@@ -72,8 +72,11 @@ def bulk_docs_import(cat):
     # Set batch_size to half the number of processor cores
     batch_size = max(1, cpu_count() // 2)
 
+    batch_size = 1
+
     for i in range(0, len(files), batch_size):
         current_batch = files[i:i+batch_size]
+        ingestion_threads = []
 
         for idx, file in enumerate(current_batch, 1):
             if file.startswith("."):
@@ -83,17 +86,22 @@ def bulk_docs_import(cat):
                 filepath = "/app/cat/static/bulkimport/" + file
                 t = Thread(target=cat.rabbit_hole.ingest_file, args=(cat, filepath, 400, 100))
                 t.start()
+                # Add the thread to the list
+                ingestion_threads.append(t)
                 log(file + " sent to rabbithole!", "WARNING")
                 message += "<tr><td>" + file + "</td><td>&#x2705;</td></tr>"
                 #os.remove(filepath)
 
                 # Send progress message
-                progress_message = f"File <b>{file}</b> successfully sent to rabbithole."
+                progress_message = f"<b>{file}</b> successfully sent to rabbithole."
                 cat.send_ws_message(content=progress_message, msg_type='chat')
 
-                # Check if we've started batch_size threads and wait for them to finish
+                # Check if we've started batch_size threads
                 if idx % batch_size == 0:
-                    t.join()
+                    # Join all the threads to wait for all URLs to be ingested
+                    for t in ingestion_threads:
+                        t.join()
+                    
                     cat.send_ws_message(content=f"Ingested <b>{str(current_batch)[1:-1]}</b>.", msg_type='chat')
 
             except requests.exceptions.RequestException as err:

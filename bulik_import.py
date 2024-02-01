@@ -8,6 +8,7 @@ from threading import Thread
 from multiprocessing import cpu_count
 from enum import Enum
 from pydantic import BaseModel
+import concurrent.futures
 
 class BatchSize(Enum):
     auto: str = "Auto"
@@ -90,12 +91,9 @@ def bulk_url_import(url_list: str, cat):
     return message
 
 def bulk_docs_import(cat):
-
-    # Load the settings
     settings = cat.mad_hatter.get_plugin().load_settings()
     get_batch_size = settings.get("files_to_ingest_simultaneously")
 
-    # Set default values if not provided
     if get_batch_size == "Auto":
         batch_size = max(1, cpu_count() // 2)
     elif get_batch_size is None:
@@ -106,43 +104,30 @@ def bulk_docs_import(cat):
     message = '<table><thead><tr><th class="text-neutral">Document</th><th class="text-neutral">Status</th></tr></thead><tbody>'
     files = os.listdir("/app/cat/static/bulkimport")
 
-    num_files_ingested = 0
-    for i in range(0, len(files), batch_size):
-        current_batch = files[i:i+batch_size]
-        ingestion_threads = []
+    cat.send_ws_message(content=f"Importing the documents from /app/cat/static/bulkimport folder.", msg_type='chat')
+    cat.send_ws_message(content=f"I will ingest {len(files)} documents, {batch_size} documents at a time ...", msg_type='chat')
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=batch_size) as executor:
 
-        cat.send_ws_message(content=f"Ingesting {batch_size} more files simultaneously ...", msg_type='chat')
-
-        for idx, file in enumerate(current_batch, 1):
+        futures = []
+        for idx, file in enumerate(files, 1):
             if file.startswith("."):
                 continue
+
             try:
                 log("Send " + file + " to rabbithole", "WARNING")
                 filepath = "/app/cat/static/bulkimport/" + file
-                t = Thread(target=cat.rabbit_hole.ingest_file, args=(cat, filepath, 400, 100))
-                t.start()
-                num_files_ingested += 1
-                # Add the thread to the list
-                ingestion_threads.append(t)
+
+                # Submit a new thread to the executor
+                future = executor.submit(cat.rabbit_hole.ingest_file, cat, filepath, 400, 100)
+                futures.append(future)
+
                 log(file + " sent to rabbithole!", "WARNING")
                 message += "<tr><td>" + file + "</td><td>&#x2705;</td></tr>"
 
                 # Send progress message
-                progress_message = f"{idx}. <b>{file}</b> successfully sent to rabbithole."
-                cat.send_ws_message(content=progress_message, msg_type='chat')
-
-                # Check if we've started batch_size threads
-                if idx % batch_size == 0:
-                    # Join all the threads to wait for all URLs to be ingested
-                    for t in ingestion_threads:
-                        t.join()
-
-                    # Delete the files after successful ingestion
-                    # for f in current_batch:
-                    #     file_path_to_delete = os.path.join("/app/cat/static/bulkimport/", f)
-                    #     os.remove(file_path_to_delete)
-                    
-                    cat.send_ws_message(content=f"Ingested <b>{str(current_batch)[1:-1]}</b>.<br>{len(files) - num_files_ingested} more files to go ...", msg_type='chat')
+                #progress_message = f"{idx}. <b>{file}</b> successfully sent to rabbithole."
+                #cat.send_ws_message(content=progress_message, msg_type='chat')
 
             except requests.exceptions.RequestException as err:
                 message += "<tr><td>" + file + "</td><td>&#x274C; " + str(err) + "</td></tr>"
@@ -151,6 +136,9 @@ def bulk_docs_import(cat):
                 error_message = f"Error sending {file} to rabbithole: {str(err)}"
                 cat.send_ws_message(content=error_message, msg_type='chat')
 
-    
+        # Use as_completed to wait for any future to complete
+        #for future in concurrent.futures.as_completed(futures):
+            # Handle any results or exceptions here
+
     message += "</tbody></table>"
     return message

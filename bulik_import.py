@@ -55,6 +55,10 @@ def bulk_docs_import_thread(cat):
     response = bulk_docs_import(cat)
     cat.send_ws_message(content=response, msg_type='chat')
 
+    # Save the response to ingested_files.html
+    with open('/app/cat/static/bulkimport/ingested_files.html', 'w', encoding='utf-8') as file:
+        file.write(response)
+
 def bulk_url_import(url_list: str, cat):
     message = '<table><thead><tr><th class="text-neutral">URL</th><th class="text-neutral">Status</th></tr></thead><tbody>'
     for link in url_list.split(","):
@@ -102,7 +106,7 @@ def bulk_docs_import(cat):
     message = '<table><thead><tr><th class="text-neutral">Document</th><th class="text-neutral">Status</th></tr></thead><tbody>'
     files = os.listdir("/app/cat/static/bulkimport")
 
-
+    num_files_ingested = 0
     for i in range(0, len(files), batch_size):
         current_batch = files[i:i+batch_size]
         ingestion_threads = []
@@ -117,14 +121,14 @@ def bulk_docs_import(cat):
                 filepath = "/app/cat/static/bulkimport/" + file
                 t = Thread(target=cat.rabbit_hole.ingest_file, args=(cat, filepath, 400, 100))
                 t.start()
+                num_files_ingested += 1
                 # Add the thread to the list
                 ingestion_threads.append(t)
                 log(file + " sent to rabbithole!", "WARNING")
                 message += "<tr><td>" + file + "</td><td>&#x2705;</td></tr>"
-                #os.remove(filepath)
 
                 # Send progress message
-                progress_message = f"<b>{file}</b> successfully sent to rabbithole."
+                progress_message = f"{idx}. <b>{file}</b> successfully sent to rabbithole."
                 cat.send_ws_message(content=progress_message, msg_type='chat')
 
                 # Check if we've started batch_size threads
@@ -132,8 +136,13 @@ def bulk_docs_import(cat):
                     # Join all the threads to wait for all URLs to be ingested
                     for t in ingestion_threads:
                         t.join()
+
+                    # Delete the files after successful ingestion
+                    # for f in current_batch:
+                    #     file_path_to_delete = os.path.join("/app/cat/static/bulkimport/", f)
+                    #     os.remove(file_path_to_delete)
                     
-                    cat.send_ws_message(content=f"Ingested <b>{str(current_batch)[1:-1]}</b>.", msg_type='chat')
+                    cat.send_ws_message(content=f"Ingested <b>{str(current_batch)[1:-1]}</b>.<br>{len(files) - num_files_ingested} more files to go ...", msg_type='chat')
 
             except requests.exceptions.RequestException as err:
                 message += "<tr><td>" + file + "</td><td>&#x274C; " + str(err) + "</td></tr>"

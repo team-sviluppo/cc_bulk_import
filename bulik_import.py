@@ -9,6 +9,7 @@ from multiprocessing import cpu_count
 from enum import Enum
 from pydantic import BaseModel
 import concurrent.futures
+import time
 
 class BatchSize(Enum):
     auto: str = "Auto"
@@ -59,6 +60,24 @@ def bulk_docs_import_thread(cat):
     # Save the response to ingested_files.html
     with open('/app/cat/static/bulkimport/ingested_files.html', 'w', encoding='utf-8') as file:
         file.write(response)
+
+def ingest_doc(doc_name, cat, doc_number=None):
+    try:
+        start_time = time.time() # get current time (in seconds since epoch)
+        print(f"{doc_number} - Ingesting {doc_name}")
+        cat.rabbit_hole.ingest_file(cat, doc_name, 400, 100)
+        end_time = time.time() # get current time again
+        total_time = end_time - start_time # calculate difference between times
+        
+        # convert total time from seconds to minutes and seconds
+        mins, secs = divmod(total_time, 60)
+        print(f"Ingestion took {int(mins)} minute(s) and {int(secs)} second(s).")
+
+        print(f"{doc_number} - Ingested {doc_name}")
+
+    except Exception as e:
+        print(f"Error while ingesting '{doc_name}' ({e})")
+
 
 def bulk_url_import(url_list: str, cat):
     message = '<table><thead><tr><th class="text-neutral">URL</th><th class="text-neutral">Status</th></tr></thead><tbody>'
@@ -119,7 +138,8 @@ def bulk_docs_import(cat):
                 filepath = "/app/cat/static/bulkimport/" + file
 
                 # Submit a new thread to the executor
-                future = executor.submit(cat.rabbit_hole.ingest_file, cat, filepath, 400, 100)
+                #future = executor.submit(cat.rabbit_hole.ingest_file, cat, filepath, 400, 100)
+                future = executor.submit(ingest_doc, filepath, cat, idx)
                 futures.append(future)
 
                 log(file + " sent to rabbithole!", "WARNING")
